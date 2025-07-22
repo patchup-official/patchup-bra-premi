@@ -175,8 +175,8 @@
         }
 
         // Invio
-        await fetch(API_URL, {
-          method: 'POST',
+        await fetch(`${API_URL}/ID/${data.ID}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data })
         });
