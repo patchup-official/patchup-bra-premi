@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scopri il tuo premio - PatchUP Bra</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: linear-gradient(to bottom right, #fff, #f7cdb0);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      color: #000;
+    }
+    h1 {
+      color: #e6642c;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    .logo {
+      width: 120px;
+      margin: 1rem auto;
+      display: block;
+    }
+    p {
+      font-size: 1.2rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 100%;
+      max-width: 400px;
+    }
+    input {
+      padding: 0.8rem;
+      border-radius: 25px;
+      border: none;
+      font-size: 1rem;
+      text-align: center;
+    }
+    button {
+      background-color: #e6642c;
+      color: #fff;
+      border: none;
+      border-radius: 25px;
+      padding: 1rem;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background-color: #cc5825;
+    }
+    .note {
+      font-size: 0.85rem;
+      color: #555;
+      margin-top: 1rem;
+      text-align: center;
+      max-width: 400px;
+    }
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      text-align: center;
+      color: #444;
+    }
+    .popup {
+      position: fixed;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(to bottom right, #ffa84b, #ff6400);
+      color: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 15px rgba(0,0,0,0.3);
+      z-index: 9999;
+      text-align: center;
+      display: none;
+    }
+    .popup svg {
+      width: 80px;
+      margin-bottom: 1rem;
+    }
+    .popup h2 {
+      font-size: 1.6rem;
+      margin: 0.5rem 0;
+    }
+    .popup p {
+      font-size: 1rem;
+      margin: 0.5rem 0 1rem;
+    }
+    .popup small {
+      font-size: 0.8rem;
+      display: block;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>TANTI AUGURI PATCHUP BRA!</h1>
+  <img class="logo" src="PatchUp_website3-17.svg" alt="PatchUP Logo">
+  <p>Compila il form: in palio premi GRATIS!</p>
+  <form id="prizeForm">
+    <input type="text" name="Nome" placeholder="Nome e cognome" required />
+    <input type="tel" name="Telefono" placeholder="Il tuo telefono" required />
+    <input type="email" name="Email" placeholder="La tua mail" required />
+    <button type="submit">SCOPRI IL TUO PREMIO</button>
+  </form>
+
+  <div class="note">
+    Compilando il form accetti il trattamento dei tuoi dati personali al solo fine di ritirare l'omaggio. Il premio può essere ritirato esclusivamente presso lo store PatchUP di Bra in via Principi di Piemonte 26. È valido un solo premio a persona e fino ad esaurimento scorte.
+  </div>
+
+  <div class="popup" id="popup">
+    <div id="popup-content">
+      <img src="1f3c6.svg" alt="Premio">
+      <h2>COMPLIMENTI, HAI VINTO</h2>
+      <p id="premio-text"></p>
+      <small>Ti aspettiamo in negozio a Bra!<br>Via Principi di Piemonte 26 | 351 5219274 – 0172 754061</small>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>www.patchup.it | info@patchup.it</p>
+  </div>
+
+  <script>
+    const form = document.getElementById('prizeForm');
+    const popup = document.getElementById('popup');
+    const premioText = document.getElementById('premio-text');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const data = Object.fromEntries(formData.entries());
+
+      try {
+        const endpoint = 'https://sheetdb.io/api/v1/9z1qo9bbc50it';
+
+        // verifica duplicati
+        const existing = await fetch(`${endpoint}/search_or?Telefono=${data.Telefono}&Email=${data.Email}`);
+        const existingData = await existing.json();
+        if (existingData.length > 0) {
+          alert("Hai già partecipato! È valido un solo premio a persona.");
+          return;
+        }
+
+        // ottieni premio disponibile
+        const res = await fetch(endpoint);
+        const premi = await res.json();
+        const disponibile = premi.find(p => p.ID && p.ID.startsWith('P') && (!p.Nome && !p.Telefono && !p.Email));
+
+        let premio = 'Sconto del 20% su una riparazione';
+        if (disponibile) {
+          data.ID = disponibile.ID;
+          premio = disponibile.Premio;
+          await fetch(`${endpoint}/search?ID=${disponibile.ID}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data })
+          });
+        } else {
+          await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: { ...data, Premio: premio } })
+          });
+        }
+
+        premioText.textContent = `IL TUO PREMIO È ${premio}`;
+        popup.style.display = 'block';
+        setTimeout(() => popup.style.display = 'none', 5000);
+        form.reset();
+      } catch (err) {
+        console.error(err);
+        alert("Errore. Riprova.");
+      }
+    });
+  </script>
+</body>
+</html>
