@@ -86,29 +86,29 @@
     }
     .popup-content {
       background: linear-gradient(to bottom right, #fff, #f7cdb0);
-      padding: 2rem;
+      padding: 1.5rem;
       border-radius: 1rem;
       text-align: center;
-      width: 90%;
-      max-width: 360px;
+      width: 85%;
+      max-width: 320px;
       box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
     .popup-content img {
-      width: 60px;
-      margin-bottom: 1rem;
+      width: 50px;
+      margin-bottom: 0.5rem;
     }
     .popup-content h2 {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       margin: 0.5rem 0;
       color: #e6642c;
     }
     .popup-content h3 {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       margin-top: 1rem;
     }
     .popup-content p {
-      font-size: 1rem;
-      margin-top: 0.5rem;
+      font-size: 0.95rem;
+      margin-top: 0.4rem;
       color: #333;
     }
   </style>
@@ -148,9 +148,10 @@
       const data = Object.fromEntries(formData.entries());
 
       try {
-        const checkRes = await fetch(`${API_URL}/search?Telefono=${data.Telefono}`);
-        const checkJson = await checkRes.json();
-        if (checkJson.length > 0) {
+        // Controllo duplicato
+        const res = await fetch(`${API_URL}/search?Telefono=${data.Telefono}`);
+        const existing = await res.json();
+        if (existing.length > 0) {
           popupContent.innerHTML = `
             <img src="1f3c6.svg" alt="Coppa">
             <h2>Hai già partecipato!</h2>
@@ -159,6 +160,7 @@
           return;
         }
 
+        // Cerca primo premio libero
         const premiRes = await fetch(API_URL);
         const premiData = await premiRes.json();
         const premioDisponibile = premiData.find(r =>
@@ -172,12 +174,14 @@
           premioFinale = premioDisponibile.Premio;
         }
 
+        // Invio
         await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data })
         });
 
+        // Mostra popup
         popupContent.innerHTML = `
           <img src="1f3c6.svg" alt="Coppa">
           <h2>COMPLIMENTI, HAI VINTO</h2>
@@ -188,9 +192,9 @@
         `;
         popup.style.display = 'flex';
         form.reset();
-      } catch (error) {
-        alert("Errore nella registrazione. Riprova.");
-        console.error(error);
+      } catch (err) {
+        console.error("Errore:", err);
+        alert("Errore durante la registrazione.");
       }
     });
 
