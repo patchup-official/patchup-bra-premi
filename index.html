@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -74,35 +73,43 @@
       color: #444;
     }
     .popup {
+      display: none;
       position: fixed;
-      top: 20%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: linear-gradient(to bottom right, #ffa84b, #ff6400);
-      color: white;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .popup-content {
+      background: linear-gradient(to bottom right, #fff, #f7cdb0);
       padding: 2rem;
       border-radius: 1rem;
-      box-shadow: 0 0 15px rgba(0,0,0,0.3);
-      z-index: 9999;
       text-align: center;
-      display: none;
+      width: 90%;
+      max-width: 360px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
     }
-    .popup svg {
-      width: 80px;
+    .popup-content img {
+      width: 60px;
       margin-bottom: 1rem;
     }
-    .popup h2 {
-      font-size: 1.6rem;
+    .popup-content h2 {
+      font-size: 1.5rem;
       margin: 0.5rem 0;
+      color: #e6642c;
     }
-    .popup p {
-      font-size: 1rem;
-      margin: 0.5rem 0 1rem;
-    }
-    .popup small {
-      font-size: 0.8rem;
-      display: block;
+    .popup-content h3 {
+      font-size: 1.2rem;
       margin-top: 1rem;
+    }
+    .popup-content p {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      color: #333;
     }
   </style>
 </head>
@@ -122,12 +129,7 @@
   </div>
 
   <div class="popup" id="popup">
-    <div id="popup-content">
-      <img src="1f3c6.svg" alt="Premio">
-      <h2>COMPLIMENTI, HAI VINTO</h2>
-      <p id="premio-text"></p>
-      <small>Ti aspettiamo in negozio a Bra!<br>Via Principi di Piemonte 26 | 351 5219274 – 0172 754061</small>
-    </div>
+    <div class="popup-content" id="popup-content"></div>
   </div>
 
   <div class="footer">
@@ -137,7 +139,8 @@
   <script>
     const form = document.getElementById('prizeForm');
     const popup = document.getElementById('popup');
-    const premioText = document.getElementById('premio-text');
+    const popupContent = document.getElementById('popup-content');
+    const API_URL = 'https://sheetdb.io/api/v1/9z1qo9bbc50it';
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -145,47 +148,54 @@
       const data = Object.fromEntries(formData.entries());
 
       try {
-        const endpoint = 'https://sheetdb.io/api/v1/9z1qo9bbc50it';
-
-        // verifica duplicati
-        const existing = await fetch(`${endpoint}/search_or?Telefono=${data.Telefono}&Email=${data.Email}`);
-        const existingData = await existing.json();
-        if (existingData.length > 0) {
-          alert("Hai già partecipato! È valido un solo premio a persona.");
+        const checkRes = await fetch(`${API_URL}/search?Telefono=${data.Telefono}`);
+        const checkJson = await checkRes.json();
+        if (checkJson.length > 0) {
+          popupContent.innerHTML = `
+            <img src="1f3c6.svg" alt="Coppa">
+            <h2>Hai già partecipato!</h2>
+            <p>È valido un solo premio a persona.</p>`;
+          popup.style.display = 'flex';
           return;
         }
 
-        // ottieni premio disponibile
-        const res = await fetch(endpoint);
-        const premi = await res.json();
-        const disponibile = premi.find(p => p.ID && p.ID.startsWith('P') && (!p.Nome && !p.Telefono && !p.Email));
+        const premiRes = await fetch(API_URL);
+        const premiData = await premiRes.json();
+        const premioDisponibile = premiData.find(r =>
+          r.ID && r.ID.startsWith('P') &&
+          (!r.Nome && !r.Telefono && !r.Email)
+        );
 
-        let premio = 'Sconto del 20% su una riparazione';
-        if (disponibile) {
-          data.ID = disponibile.ID;
-          premio = disponibile.Premio;
-          await fetch(`${endpoint}/search?ID=${disponibile.ID}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data })
-          });
-        } else {
-          await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: { ...data, Premio: premio } })
-          });
+        let premioFinale = "Sconto del 20% su una riparazione";
+        if (premioDisponibile) {
+          data.ID = premioDisponibile.ID;
+          premioFinale = premioDisponibile.Premio;
         }
 
-        premioText.textContent = `IL TUO PREMIO È ${premio}`;
-        popup.style.display = 'block';
-        setTimeout(() => popup.style.display = 'none', 5000);
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data })
+        });
+
+        popupContent.innerHTML = `
+          <img src="1f3c6.svg" alt="Coppa">
+          <h2>COMPLIMENTI, HAI VINTO</h2>
+          <h3>IL TUO PREMIO È</h3>
+          <p>${premioFinale}</p>
+          <p style="margin-top: 1rem; font-weight:bold; background:#fff; color:#e6642c; padding:0.4rem 1rem; display:inline-block; border-radius:20px;">Ti aspettiamo in negozio a Bra!</p>
+          <p style="margin-top: 0.5rem; font-size: 0.9rem;">Via Principi di Piemonte 26 – T 351 5219274 - 0172 754061</p>
+        `;
+        popup.style.display = 'flex';
         form.reset();
-      } catch (err) {
-        console.error(err);
-        alert("Errore. Riprova.");
+      } catch (error) {
+        alert("Errore nella registrazione. Riprova.");
+        console.error(error);
       }
     });
+
+    // Chiudi popup al click
+    popup.addEventListener("click", () => popup.style.display = "none");
   </script>
 </body>
 </html>
